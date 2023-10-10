@@ -29,6 +29,7 @@ source "${namespace}/Scripts/activate"
 export PYTHONPATH=$(cd "${namespace}/Lib/site-packages" && pwd)
 export PYTHONWARNINGS='ignore'
 export PYTHONIOENCODING='utf-8'
+export PYTHONUTF8='1'
 
 # --------------------------------------------------------------------
 # install fdroidserver and all dependencies to the virtual environment
@@ -45,9 +46,9 @@ export PYTHONIOENCODING='utf-8'
 # see:
 #   https://github.com/f-droid/fdroidserver/blob/2.1.2/setup.py#L97
 # --------------------------------------------------------------------
-git_repo='fdroidserver'
-git_ref='2.1.2'
-wget -O "${git_repo}-${git_ref}.zip" "https://github.com/f-droid/${git_repo}/archive/refs/tags/${git_ref}.zip"
+git_repo='fork-fdroidserver'
+git_ref='winpython_3.7.1.0'
+wget -O "${git_repo}-${git_ref}.zip" "https://github.com/warren-bank/${git_repo}/archive/refs/heads/${git_ref}.zip"
 unzip "${git_repo}-${git_ref}.zip"
 mv "${git_repo}-${git_ref}/fdroidserver" "${namespace}/fdroidserver"
 mv "${git_repo}-${git_ref}/fdroid"       "${namespace}/fdroid"
@@ -88,4 +89,4 @@ pip install "./${namespace}"
 # ----------------------------------
 # deactivate the virtual environment
 # ----------------------------------
-deacativate
+deactivate

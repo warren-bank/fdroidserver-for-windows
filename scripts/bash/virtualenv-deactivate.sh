@@ -3,4 +3,4 @@
 # ----------------------------------
 # deactivate the virtual environment
 # ----------------------------------
-deacativate
+deactivate

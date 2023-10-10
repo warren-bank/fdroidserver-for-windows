@@ -30,3 +30,4 @@ source "${workspace}/${namespace}/Scripts/activate"
 export PYTHONPATH=$(cd "${workspace}/${namespace}/Lib/site-packages" && pwd)
 export PYTHONWARNINGS='ignore'
 export PYTHONIOENCODING='utf-8'
+export PYTHONUTF8='1'

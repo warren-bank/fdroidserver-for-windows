@@ -31,3 +31,4 @@ call "%workspace%\%namespace%\Scripts\activate.bat"
 set PYTHONPATH=%workspace%\%namespace%\Lib\site-packages
 set PYTHONWARNINGS=ignore
 set PYTHONIOENCODING=utf-8
+set PYTHONUTF8=1
