@@ -1,0 +1,186 @@
+-------------------------------------------------------------------------------- #01:
+
+ImportError: urllib3 v2.0 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'OpenSSL 1.1.0i  14 Aug 2018'.
+See: https://github.com/urllib3/urllib3/issues/2168
+
+https://stackoverflow.com/questions/76187256
+  "urllib3<2.0"
+
+https://github.com/psf/requests
+https://github.com/psf/requests/releases
+
+https://github.com/psf/requests/blob/v2.30.0/setup.py#L64
+  "urllib3>=1.21.1,<3"
+
+https://github.com/psf/requests/blob/v2.29.0/setup.py#L64
+  "urllib3>=1.21.1,<1.27"
+
+workaround:
+* update setup install requirements to restrict the version of "requests" to: < 2.30.0
+
+-------------------------------------------------------------------------------- #02:
+
+ERROR:
+  Could not install packages due to an OSError:
+  [Errno 2] No such file or directory:
+    'E:\fdroidserver\python 3.7.10 with openssl 1.1.0i\virtualenv\fdroid-server\Lib\site-packages\libcloud\test\compute\fixtures\azure_arm\_subscriptions_99999999_resourceGroups_REVIZOR_providers_Microsoft_Network_virtualNetworks_test_network_CheckIPAddressAvailability.json'
+HINT:
+  This error might have occurred since this system does not have Windows Long Path support enabled.
+  You can find information on how to enable this at:
+    https://pip.pypa.io/warnings/enable-long-paths
+
+notes:
+* Windows 10+ supports long paths
+* without Windows Long Path support enabled:
+  - MAX_PATH = 260 chars
+  - ex: "D:\some 256-character path string<NUL>"
+* path string that results in error:
+  - value:
+      fdroidserver\python 3.7.10 with openssl 1.1.0i\virtualenv\fdroid-server\Lib\site-packages\libcloud\test\compute\fixtures\azure_arm\_subscriptions_99999999_resourceGroups_REVIZOR_providers_Microsoft_Network_virtualNetworks_test_network_CheckIPAddressAvailability.json
+  - length: 255
+
+workaround:
+* run the fdroidserver install script from a shorter initial directory path
+  - ex: 'E:\fd' => 'E:\fd\virtualenv'
+
+--------------------------------------------------------------------------------
+
+status:
+* Successfully installed GitPython-3.1.37 Pillow-9.5.0 PyYAML-6.0.1 androguard-3.4.0a1 apache-libcloud-3.8.0 args-0.1.0 asn1crypto-1.5.1 backcall-0.2.0 bcrypt-4.0.1 certifi-2023.7.22 cffi-1.15.1 charset-normalizer-3.3.0 click-8.1.7 clint-0.5.1 colorama-0.4.6 cryptography-41.0.4 cycler-0.11.0 decorator-5.1.1 defusedxml-0.7.1 fdroidserver-2.1.2 fonttools-4.38.0 gitdb-4.0.10 idna-3.4 importlib-metadata-6.7.0 ipython-7.34.0 jedi-0.19.1 kiwisolver-1.4.5 lxml-4.9.3 matplotlib-3.5.3 matplotlib-inline-0.1.6 networkx-2.6.3 numpy-1.21.6 packaging-23.2 paramiko-3.3.1 parso-0.8.3 pathspec-0.11.2 pickleshare-0.7.5 prompt-toolkit-3.0.39 pyasn1-0.4.8 pyasn1-modules-0.2.8 pycparser-2.21 pydot-1.4.2 pygments-2.16.1 pynacl-1.5.0 pyparsing-3.1.1 pypng-0.20220715.0 python-dateutil-2.8.2 python-vagrant-0.5.15 qrcode-7.4.2 requests-2.29.0 ruamel.yaml-0.17.35 ruamel.yaml.clib-0.2.8 six-1.16.0 smmap-5.0.1 traitlets-5.9.0 typing-extensions-4.7.1 urllib3-1.26.17 wcwidth-0.2.8 yamllint-1.32.0 zipp-3.15.0
+
+-------------------------------------------------------------------------------- #03:
+
+notes:
+  regarding limitations in the ability of the script "fdroidserver/common.py" to determine the filepaths to suitable binary dependencies
+
+in general:
+* binary dependencies are assumed to have no filename extension
+
+in particular:
+* JAVA_HOME
+  - exact binary dependency filenames:
+    * jarsigner
+    * javac
+    * keytool
+* ANDROID_HOME
+  - exact binary dependency filenames:
+    * aapt
+    * apksigner
+    * zipalign
+
+notes:
+======
+
+* JAVA_HOME
+  - the basename of the directory path must match a regex pattern, or JAVA_HOME is ignored
+    * the function "_add_java_paths_to_config" implements this regex pattern match
+    * example of suitable directory name: "java-11-jdk"
+  - the relative filepath "bin/javac" must exist, or JAVA_HOME is ignored
+    * javac is otherwise unused
+  - the relative filepaths "bin/jarsigner" and "bin/keytool" must exist
+    * otherwise, these binary dependency filenames are ignored
+  - an implementation of "which" is used to search in PATH
+    * works well with Windows
+    * returns binary dependency filenames that include a suitable filename extension (ex: ".exe")
+
+* ANDROID_HOME
+  - the relative directory path to binary dependencies is: "build-tools/<version>/"
+    * where "<version>" must be greater than:
+        MINIMUM_APKSIGNER_BUILD_TOOLS_VERSION = '26.0.2'
+    * the function "SdkToolsPopen" does conditionally append ".exe" to filenames when testing for existence
+      - used to determine filepath for the binary dependencies:
+        * aapt
+        * zipalign
+    * the function "find_apksigner" first tries to use the function "find_command"
+      to search PATH for a binary named "apksigner"
+      - the biggest problem is that "android-11/lib/apksigner.jar"
+        needs to be called by the shell script: "android-11/apksigner.bat"
+      - even if the value of:
+          config.get('apksigner', '')
+        was to correctly return the absolute filepath to "apksigner.bat",
+        it still wouldn't run properly because of the way the process is spawned:
+          subprocess.Popen(['/path/to/apksigner.bat', '--version'], cwd=cwd, shell=False, ...)
+        for this to work:
+          shell=True
+
+summary:
+========
+
+* JAVA_HOME
+    environment variable is currently ignored
+* JAVA_HOME/bin
+    directory path is added to PATH, and "which" is successfully able to find binary dependency filenames
+* ANDROID_HOME
+    environment variable is currently ignored
+
+patch #01 (before):
+===================
+
+def find_command(command):
+    """Find the full path of a command, or None if it can't be found in the PATH."""
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(command)
+    if fpath:
+        if is_exe(command):
+            return command
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, command)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
+
+patch #01 (after):
+==================
+
+def find_command(command):
+    """Find the full path of a command, or None if it can't be found in the PATH."""
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(command)
+    if fpath:
+        if is_exe(command):
+            return command
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, command)
+            if is_exe(exe_file):
+                return exe_file
+            if (os.name == 'nt'):
+                if is_exe(exe_file + '.exe'):
+                    return exe_file + '.exe'
+                if is_exe(exe_file + '.cmd'):
+                    return exe_file + '.cmd'
+                if is_exe(exe_file + '.bat'):
+                    return exe_file + '.bat'
+
+    return None
+
+patch #02 (before):
+===================
+
+    try:
+        p = subprocess.Popen(commands, cwd=cwd, shell=False, env=process_env,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                             stderr=stderr_param)
+    except OSError as e:
+
+patch #02 (after):
+==================
+
+    try:
+        cmd   = commands[0]
+        shell = cmd.endswith('.cmd') or cmd.endswith('.bat')
+
+        p = subprocess.Popen(commands, cwd=cwd, shell=shell, env=process_env,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                             stderr=stderr_param)
+    except OSError as e:
+
+--------------------------------------------------------------------------------
