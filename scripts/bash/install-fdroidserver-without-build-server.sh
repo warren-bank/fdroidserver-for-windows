@@ -19,24 +19,16 @@ cd "$workspace"
 # -------------------------------------------------
 # create a new virtual environment within workspace
 # -------------------------------------------------
+# versions of globally installed packages:
+#   pip 23.3
+#   virtualenv 20.0.31
+# -------------------------------------------------
+# installation of these packages:
+#   python -m pip install --upgrade pip=23.3
+#   pip install virtualenv==20.0.31
+# -------------------------------------------------
 namespace='fdroid-server'
-virtualenv "$namespace"
-
-# --------------------------------
-# activate the virtual environment
-# --------------------------------
-source "${namespace}/Scripts/activate"
-export PYTHONPATH=$(cd "${namespace}/Lib/site-packages" && pwd)
-export PYTHONWARNINGS='ignore'
-export PYTHONIOENCODING='utf-8'
-export PYTHONUTF8='1'
-
-# --------------------------------------------------------------------
-# install fdroidserver and all dependencies to the virtual environment
-# --------------------------------------------------------------------
-# see:
-#   https://f-droid.org/docs/Installing_the_Server_and_Repo_Tools/#installing-the-latest-code-any-platform
-# --------------------------------------------------------------------
+virtualenv "$namespace" --pip "$(python.exe -c 'import pip; print(pip.__version__)')"
 
 # --------------------------------------------------------------------
 # download tagged snapshot from fdroidserver git repo
@@ -83,10 +75,30 @@ perl -pe "s/^(\\s*'requests >= 2\\.5\\.2)(?:, .+)?(',\\s*)\$/\\1, < 2.30.0\\2/;"
 
 rm -f "${namespace}/setup.py.tmp"
 
+# --------------------------------
+# activate the virtual environment
+# --------------------------------
+source "${namespace}/Scripts/activate"
+export PYTHONPATH=$(cd "${namespace}/Lib/site-packages" && pwd)
+export PYTHONWARNINGS='ignore'
+export PYTHONIOENCODING='utf-8'
+export PYTHONUTF8='1'
+
 # ---------
 # run setup
 # ---------
-pip install "./${namespace}"
+# the "right" way:
+#   pip install "./${namespace}"
+# ---------
+# the "hacky" way..
+# to override the shebang included in both:
+# Python scripts, and Python scripts embedded into Windows executables.
+# ---------
+# see:
+#   https://github.com/pypa/pip/issues/4616
+#   https://pip.pypa.io/en/stable/cli/pip/
+# ---------
+python.exe -c "import pip, sys; sys.executable='python.exe'; pip.main()" --require-virtualenv --no-cache-dir --python "${workspace}/${namespace}/Scripts/python.exe" --quiet --disable-pip-version-check install "./${namespace}"
 
 # ----------------------------------
 # deactivate the virtual environment
@@ -121,105 +133,6 @@ perl -pe "s/^(VIRTUAL_ENV=).+\$/\\1\"\\\$( cd \"\\\$( dirname \"\\\${BASH_SOURCE
 cp "${namespace}/Scripts/activate.bat" "${namespace}/Scripts/activate.bat.bak"
 perl -pe "s/^(set \"VIRTUAL_ENV=).+\$/\\1%~dp0..\"/;" "${namespace}/Scripts/activate.bat.bak" > "${namespace}/Scripts/activate.bat"
 [ "$backup_modified_files" == '1' ] || rm -f "${namespace}/Scripts/activate.bat.bak"
-
-# -----------------------------------------------------
-# 3) replace shebang in several Python scripts
-#      line: 1
-#      code: #!E:\fd\virtualenv\fdroid-server\Scripts\python.exe
-#      fix1: #!python.exe
-#      fix2: #!/usr/bin/env bash
-#            "exec" "`dirname \"$0\"`/python" "$0" "$@"
-#      docs:
-#        https://stackoverflow.com/a/33225909
-# -----------------------------------------------------
-
-function replace_python_shebang() {
-  replace_python_shebang_fix1 "$1"
-}
-
-function replace_python_shebang_fix1() {
-  python_script_filepath="$1"
-
-  cp "$python_script_filepath" "${python_script_filepath}.py.bak"
-  perl -ne "if (\$. == 1) {print qq(#!python.exe\\n);} else {print \$_;}" "${python_script_filepath}.py.bak" > "$python_script_filepath"
-  [ "$backup_modified_files" == '1' ] || rm -f "${python_script_filepath}.py.bak"
-}
-
-function replace_python_shebang_fix2() {
-  python_script_filepath="$1"
-
-  new_line_1='#!/usr/bin/env bash'
-  new_line_2='"exec" "`dirname \\"\$0\\"`/python" "\$0" "\$@"'
-  new_shebang="${new_line_1}\\n${new_line_2}\\n"
-
-  cp "$python_script_filepath" "${python_script_filepath}.py.bak"
-  perl -ne "if (\$. == 1) {print qq(${new_shebang});} else {print \$_;}" "${python_script_filepath}.py.bak" > "$python_script_filepath"
-  [ "$backup_modified_files" == '1' ] || rm -f "${python_script_filepath}.py.bak"
-}
-
-replace_python_shebang "${namespace}/Scripts/prichunkpng"
-replace_python_shebang "${namespace}/Scripts/pricolpng"
-replace_python_shebang "${namespace}/Scripts/priditherpng"
-replace_python_shebang "${namespace}/Scripts/priforgepng"
-replace_python_shebang "${namespace}/Scripts/prigreypng"
-replace_python_shebang "${namespace}/Scripts/pripalpng"
-replace_python_shebang "${namespace}/Scripts/pripamtopng"
-replace_python_shebang "${namespace}/Scripts/priplan9topng"
-replace_python_shebang "${namespace}/Scripts/pripnglsch"
-replace_python_shebang "${namespace}/Scripts/pripngtopam"
-replace_python_shebang "${namespace}/Scripts/prirowpng"
-replace_python_shebang "${namespace}/Scripts/priweavepng"
-
-# -----------------------------------------------------
-# 4) replace shebang in several Windows executables
-#      line: 1x line that can occur anywhere in file
-#      code: #!E:\fd\virtualenv\fdroid-server\Scripts\python.exe
-#      fix : #!python.exe
-#            #\fd\virtualenv\fdroid-server\Scripts\
-#      note: the total string length must not change.
-#            "E:" is replaced by: "\n#"
-# -----------------------------------------------------
-
-function replace_win_shebang() {
-  win_exe_filepath="$1"
-
-  cp "$win_exe_filepath" "${win_exe_filepath}.bak"
-  perl -e 'open (IN, q(<), qq($ARGV[0])) or die $!; open (OUT, q(>), qq($ARGV[1])) or die $!; binmode IN; binmode OUT; my $buf = do {local $/; <IN> }; $buf =~ s/(\#\!)[A-Za-z]:(\\(?:[^\\]+\\)*)(python\.exe)/\1\3\n#\2/; print OUT $buf;' "${win_exe_filepath}.bak" "$win_exe_filepath"
-  [ "$backup_modified_files" == '1' ] || rm -f "${win_exe_filepath}.bak"
-}
-
-replace_win_shebang "${namespace}/Scripts/androapkid.exe"
-replace_win_shebang "${namespace}/Scripts/androarsc.exe"
-replace_win_shebang "${namespace}/Scripts/androaxml.exe"
-replace_win_shebang "${namespace}/Scripts/androcg.exe"
-replace_win_shebang "${namespace}/Scripts/androdd.exe"
-replace_win_shebang "${namespace}/Scripts/androdis.exe"
-replace_win_shebang "${namespace}/Scripts/androguard.exe"
-replace_win_shebang "${namespace}/Scripts/androgui.exe"
-replace_win_shebang "${namespace}/Scripts/androlyze.exe"
-replace_win_shebang "${namespace}/Scripts/androsign.exe"
-replace_win_shebang "${namespace}/Scripts/f2py.exe"
-replace_win_shebang "${namespace}/Scripts/fdroid.exe"
-replace_win_shebang "${namespace}/Scripts/fonttools.exe"
-replace_win_shebang "${namespace}/Scripts/iptest.exe"
-replace_win_shebang "${namespace}/Scripts/iptest3.exe"
-replace_win_shebang "${namespace}/Scripts/ipython.exe"
-replace_win_shebang "${namespace}/Scripts/ipython3.exe"
-replace_win_shebang "${namespace}/Scripts/normalizer.exe"
-replace_win_shebang "${namespace}/Scripts/pip-3.7.exe"
-replace_win_shebang "${namespace}/Scripts/pip.exe"
-replace_win_shebang "${namespace}/Scripts/pip3.7.exe"
-replace_win_shebang "${namespace}/Scripts/pip3.exe"
-replace_win_shebang "${namespace}/Scripts/pyftmerge.exe"
-replace_win_shebang "${namespace}/Scripts/pyftsubset.exe"
-replace_win_shebang "${namespace}/Scripts/pygmentize.exe"
-replace_win_shebang "${namespace}/Scripts/qr.exe"
-replace_win_shebang "${namespace}/Scripts/ttx.exe"
-replace_win_shebang "${namespace}/Scripts/wheel-3.7.exe"
-replace_win_shebang "${namespace}/Scripts/wheel.exe"
-replace_win_shebang "${namespace}/Scripts/wheel3.7.exe"
-replace_win_shebang "${namespace}/Scripts/wheel3.exe"
-replace_win_shebang "${namespace}/Scripts/yamllint.exe"
 
 # -------------------------------------------------------
 # end:

@@ -10,12 +10,6 @@ wget_home="${BIN}/install-fdroidserver-deps/wget/1.19.4"
 perl_home="${BIN}/install-fdroidserver-deps/perl/5.10.1"
 export PATH="${wget_home}:${perl_home}:${PATH}"
 
-# ---------------------------------------------
-# [optional] specify custom pip cache directory
-# ---------------------------------------------
-
-export PIP_CACHE_DIR='/e/cache/pip'
-
 # ------------------------
 # [optional] configuration
 # ------------------------
