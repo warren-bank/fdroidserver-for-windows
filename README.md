@@ -75,6 +75,23 @@ All other _fdroidserver_ functionality is untested.<br>Feedback is welcome.
 * download the `virtualenv.7z` file from [releases](https://github.com/warren-bank/fdroidserver-for-windows/releases) to any directory
 * use [7-Zip](https://portableapps.com/apps/utilities/7-zip_portable) to uncompress the `virtualenv.7z` file into the root directory of this repo
   - ex: extract the `virtualenv` directory into:<br>`C:\path\to\fdroidserver-for-windows`
+* fix shortcuts&hellip;
+  - method 1 (bash)
+    * start `bash` terminal
+    * run:
+      ```bash
+        fdsdir='/c/path/to/fdroidserver-for-windows'
+
+        source "${fdsdir}/scripts/bash/fix-extracted-virtualenv-7z.sh"
+      ```
+  - method 2 (cmd)
+    * start `cmd` terminal
+    * run:
+      ```bash
+        set fdsdir=C:\path\to\fdroidserver-for-windows
+
+        call "%fdsdir%\scripts\cmd\fix-extracted-virtualenv-7z.bat"
+      ```
 
 #### Use _fdroidserver_ (bash)
 

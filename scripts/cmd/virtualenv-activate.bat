@@ -7,9 +7,9 @@ rem :: add required dependencies to environment
 rem :: ----------------------------------------
 call "%DIR%\virtualenv-env.bat"
 
-rem :: ------------------
-rem :: create a workspace
-rem :: ------------------
+rem :: -------------
+rem :: use workspace
+rem :: -------------
 set workspace=%DIR%\..\..
 call "%DIR%\util\resolve_path.bat" "%workspace%"
 set workspace=%resolved_path%\virtualenv

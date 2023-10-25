@@ -7,9 +7,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # ----------------------------------------
 source "${DIR}/virtualenv-env.sh"
 
-# ------------------
-# create a workspace
-# ------------------
+# -------------
+# use workspace
+# -------------
 workspace="$( cd "${DIR}/../.." && pwd )"
 workspace="${workspace}/virtualenv"
 namespace='fdroid-server'
